@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ders Odası & Odaklanma Alanı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Nunito+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.min.js"></script>
+
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Nunito Sans', sans-serif; background: #f6f0e6; color: #4a3324; }
+  button, input, textarea, select { font-family: inherit; }
+  .dm-btn { cursor: pointer; transition: all 0.2s ease; border: none; }
+  .dm-btn:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); }
+  .dm-btn:active:not(:disabled) { transform: translateY(0); filter: brightness(0.97); }
+
+  /* STUDY ROOM STYLES */
+  .study-room-shell {
+    position: relative; min-height: 560px; overflow: hidden; border-radius: 28px;
+    background:
+      radial-gradient(circle at 18% 16%, rgba(255,255,255,.95) 0 2px, transparent 3px),
+      radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255,244,222,.55), transparent 65%),
+      linear-gradient(180deg, #f8e8d6 0%, #ead2bc 52%, #d8b28f 53%, #bd8c61 100%);
+    box-shadow: inset 0 0 90px rgba(93,52,24,.12), 0 24px 60px rgba(86,55,31,.16);
+  }
+  .study-room-shell:before {
+    content:""; position:absolute; inset:0; pointer-events:none; z-index: 6;
+    background:
+      radial-gradient(ellipse 120% 90% at 50% 105%, rgba(40,20,8,.16), transparent 60%),
+      linear-gradient(90deg, rgba(255,255,255,.30), transparent 22%, transparent 78%, rgba(90,49,22,.12)),
+      repeating-linear-gradient(90deg, rgba(104,63,37,.045) 0 2px, transparent 2px 44px);
+  }
+  .study-lamp {
+    position:absolute; width:150px; height:150px; border-radius:50%; right:7%; top:5%;
+    background: radial-gradient(circle, rgba(255,232,175,.85) 0%, rgba(255,226,157,.35) 40%, rgba(255,226,157,0) 70%);
+    filter: blur(2px);
+  }
+  .room-window {
+    position:absolute; left:5%; top:4%; width:150px; height:150px; border-radius:16px; z-index:1;
+    background: linear-gradient(180deg,#bfe3fa,#e9f5ff 55%,#fdf4e3 100%);
+    border:8px solid #7c4c2a; box-shadow: 0 14px 30px rgba(60,35,15,.22), inset 0 0 20px rgba(255,255,255,.4);
+  }
+  .room-window:before, .room-window:after { content:""; position:absolute; background:#7c4c2a; }
+  .room-window:before { left:50%; top:0; bottom:0; width:6px; transform:translateX(-50%); }
+  .room-window:after { top:50%; left:0; right:0; height:6px; transform:translateY(-50%); }
+
+  .study-table {
+    position:absolute; left:8%; right:8%; top:37%; height:250px; border-radius:42% 42% 26px 26px;
+    background: linear-gradient(180deg,#a06e46,#7c4c2a 55%,#663a20 85%, #562f19 100%);
+    border: 7px solid #5b331f;
+    box-shadow: 0 30px 26px -12px rgba(40,20,8,.38), 0 8px 40px rgba(54,30,17,.22), inset 0 10px 18px rgba(255,255,255,.12);
+    transform: perspective(900px) rotateX(7deg);
+  }
+
+  /* TIMER DISPLAY STYLES */
+  .timer-display { font-family:'Fraunces',serif; font-size:48px; font-weight:700; letter-spacing:.3px; color:#4a3324; }
+  .pomodoro-choice {
+    border:1px solid #e5d7c7; background:#fffaf4; color:#62432d; border-radius:14px;
+    padding:8px 12px; cursor:pointer; transition:.18s ease; font-weight:700;
+  }
+  .pomodoro-choice:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(90,56,31,.10); }
+  .pomodoro-choice.active { background:linear-gradient(135deg,#8d63d8,#6f4bc1); color:white; border-color:#6f4bc1; box-shadow: 0 8px 18px rgba(111,75,193,.30); }
+
+  .mode-switch-btn {
+    border:1px solid #d4c3b3; background:#ebdcd0; color:#5c3a25; border-radius:20px; padding:6px 16px; font-weight:700; cursor:pointer;
+  }
+  .mode-switch-btn.active { background:#7c4c2a; color:#fff; }
+
+  /* SHOP ITEM CARD */
+  .shop-item-card { transition: transform .18s ease, box-shadow .18s ease; }
+  .shop-item-card:hover { transform: translateY(-3px); box-shadow: 0 14px 26px rgba(90,56,31,.14); }
+
+  /* MUSIC THEMES */
+  .music-theme-spotify-dark { background: #121212; color: #ffffff; }
+  .music-theme-lofi-sunset { background: linear-gradient(135deg, #2d1b4e 0%, #1c1032 100%); color: #ffd3e0; }
+  .music-theme-cyber-neon { background: #0a0e17; color: #00f0ff; }
+  .music-theme-cozy-wood { background: #fdf6ed; color: #5c3c28; }
+
+  .lyrics-box {
+    max-height: 180px; overflow-y: auto; text-align: center; padding: 10px; border-radius: 12px;
+    background: rgba(0,0,0,0.15); margin-top: 15px; font-style: italic;
+  }
+  .lyric-line { padding: 4px 0; transition: all 0.3s ease; opacity: 0.6; }
+  .lyric-line.active { opacity: 1; font-weight: 700; font-size: 1.05em; color: #1db954; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #c5a898; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+(() => {
+  const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+  // Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAxu6_pvPvqi3iwoBanu3NWjUO2Ev-7qqU",
+    authDomain: "biiirt.firebaseapp.com",
+    projectId: "biiirt",
+    storageBucket: "biiirt.firebasestorage.app",
+    messagingSenderId: "36148085573",
+    appId: "1:36148085573:web:f48cdc5dcb85ebe719b42c",
+    measurementId: "G-WXR8C1ZM1G"
+  };
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+
+  // SHOP ITEMS DEFINITIONS
+  const SHOP_CATALOG = [
+    // Saçlar
+    { id: 'hair_wavy', name: 'Dalgalı Saç', category: 'saç', price: 15, icon: '💇‍♀️' },
+    { id: 'hair_bun', name: 'Şık Topuz', category: 'saç', price: 20, icon: '👱‍♀️' },
+    { id: 'hair_anime', name: 'Anime Saçı', category: 'saç', price: 30, icon: '🦹‍♀️' },
+    // Kedi Kulakları
+    { id: 'cat_ears_black', name: 'Siyah Kedi Kulakları', category: 'kedi_kulakları', price: 25, icon: '🐱' },
+    { id: 'cat_ears_pink', name: 'Pembe Kedi Kulakları', category: 'kedi_kulakları', price: 25, icon: '🐾' },
+    // Kalp Aksesuarı
+    { id: 'heart_glasses', name: 'Kalp Gözlük', category: 'kalp', price: 18, icon: '🕶️' },
+    { id: 'heart_pendant', name: 'Kalp Kolye', category: 'kalp', price: 22, icon: '💖' },
+    // Bereler
+    { id: 'beanie_knit', name: 'Örgü Bere', category: 'bere', price: 20, icon: '🧶' },
+    { id: 'beanie_street', name: 'Sokak Stili Bere', category: 'bere', price: 25, icon: '🧢' },
+    // Kulaklıklar
+    { id: 'headphones_gamer', name: 'RGB Oyuncu Kulaklığı', category: 'kulaklık', price: 35, icon: '🎧' },
+    { id: 'headphones_retro', name: 'Retro Kulaklık', category: 'kulaklık', price: 30, icon: '📻' },
+    // Tokalar
+    { id: 'hairpin_butterfly', name: 'Kelebek Toka', category: 'toka', price: 12, icon: '🦋' },
+    { id: 'hairpin_pearl', name: 'İnci Toka', category: 'toka', price: 15, icon: '✨' },
+    // Atkı
+    { id: 'scarf_winter', name: 'Sıcak Kış Atkısı', category: 'atkı', price: 22, icon: '🧣' },
+    // Premium Üstler
+    { id: 'top_kimono', name: 'Saten Kimono', category: 'premium_üst', price: 50, icon: '👘' },
+    { id: 'top_cyber_hoodie', name: 'Cyberpunk Hoodie', category: 'premium_üst', price: 60, icon: '🧥' },
+    // Premium Altlar
+    { id: 'bottom_silk_pants', name: 'İpek Pantolon', category: 'premium_alt', price: 45, icon: '👖' },
+    { id: 'bottom_dragon_joggers', name: 'Ejderha Desenli Eşofman', category: 'premium_alt', price: 55, icon: '🩳' }
+  ];
+
+  // SPOTIFY MOCK SONGS
+  const MOCK_SONGS = [
+    {
+      id: '1', title: 'Lofi Study Beats', artist: 'ChilledCow / Lofi Girl', album: 'Chillhop Essentials', duration: 180,
+      cover: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=150&auto=format&fit=crop&q=80',
+      lyrics: [
+        { time: 0, text: "🎵 Odaklanma zamanı başladı..." },
+        { time: 10, text: "☕ Sıcak kahveni yudumla" },
+        { time: 30, text: "📖 Derin düşünceler ve huzur" },
+        { time: 60, text: "✨ Zihnin berraklaşıyor" },
+        { time: 120, text: "🚀 Başarı adım adım geliyor" }
+      ]
+    },
+    {
+      id: '2', title: 'Acoustic Rain & Piano', artist: 'Relaxing Soundscapes', album: 'Peaceful Mind', duration: 210,
+      cover: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&auto=format&fit=crop&q=80',
+      lyrics: [
+        { time: 0, text: "🌧️ Yağmur damlaları cama vuruyor" },
+        { time: 20, text: "🎹 Piyanonun yumuşak melodisi" },
+        { time: 50, text: "🍃 Tüm stres geride kalıyor" },
+        { time: 100, text: "💡 Odaklan ve başarmaya devam et" }
+      ]
+    },
+    {
+      id: '3', title: 'Deep Focus Synthwave', artist: 'CyberWave', album: 'Midnight Drive', duration: 240,
+      cover: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=150&auto=format&fit=crop&q=80',
+      lyrics: [
+        { time: 0, text: "⚡ Gece enerjisi başlıyor" },
+        { time: 25, text: "🌌 Geleceğe doğru adımlar" },
+        { time: 70, text: "🔥 Kesintisiz odak ve ritim" }
+      ]
+    }
+  ];
+
+  function App() {
+    // Navigation State
+    const [activeTab, setActiveTab] = useState('study'); // 'study', 'timer', 'shop', 'music'
+
+    // Coins & Booster State
+    const [coins, setCoins] = useState(100);
+    const [boosterMultiplier, setBoosterMultiplier] = useState(1); // 1x, 2x etc.
+
+    // Timer States
+    const [timerMode, setTimerMode] = useState('pomodoro'); // 'pomodoro' | 'stopwatch'
+    const [selectedPomoTime, setSelectedPomoTime] = useState(25); // 15, 25, 35, 45, 60, 90, 120
+    const [secondsLeft, setSecondsLeft] = useState(25 * 60);
+    const [stopwatchSeconds, setStopwatchSeconds] = useState(0);
+    const [isRunning, setIsRunning] = useState(false);
+    const [totalFocusedSeconds, setTotalFocusedSeconds] = useState(0);
+
+    // Shop State
+    const [inventory, setInventory] = useState([]);
+    const [equipped, setEquipped] = useState({});
+
+    // Music & Spotify State
+    const [spotifyConnected, setSpotifyConnected] = useState(false);
+    const [musicTheme, setMusicTheme] = useState('music-theme-cozy-wood');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [currentTrack, setCurrentTrack] = useState(MOCK_SONGS[0]);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [trackProgress, setTrackProgress] = useState(0);
+
+    // ⏱️ TIMER LOGIC & COIN EARNING CALCULATIONS
+    useEffect(() => {
+      let interval = null;
+
+      if (isRunning) {
+        interval = setInterval(() => {
+          setTotalFocusedSeconds(prev => prev + 1);
+
+          // Every 2 minutes (120 seconds), earn 1 base coin * booster
+          if ((totalFocusedSeconds + 1) % 120 === 0) {
+            const baseEarned = 1;
+            setCoins(c => c + (baseEarned * boosterMultiplier));
+          }
+
+          if (timerMode === 'pomodoro') {
+            setSecondsLeft(prev => {
+              if (prev <= 1) {
+                setIsRunning(false);
+                // Calculate session bonus coins on completion
+                let bonusCoins = 0;
+                if (selectedPomoTime === 30) bonusCoins = 5;
+                else if (selectedPomoTime === 45) bonusCoins = 10;
+                else if (selectedPomoTime === 60) bonusCoins = 15;
+                else if (selectedPomoTime === 90) bonusCoins = 25;
+                else if (selectedPomoTime === 120) bonusCoins = 40;
+
+                const totalEarned = (Math.floor((selectedPomoTime * 60) / 120) + bonusCoins) * boosterMultiplier;
+                setCoins(c => c + bonusCoins * boosterMultiplier);
+                alert(`🎉 Tebrikler! ${selectedPomoTime} dakikalık odaklanma tamamlandı. Toplam Kazanılan Ekstra Bonus: 🪙 ${totalEarned} Coin!`);
+                return 0;
+              }
+              return prev - 1;
+            });
+          } else {
+            // Stopwatch mode
+            setStopwatchSeconds(prev => prev + 1);
+          }
+        }, 1000);
+      } else {
+        clearInterval(interval);
+      }
+
+      return () => clearInterval(interval);
+    }, [isRunning, timerMode, selectedPomoTime, totalFocusedSeconds, boosterMultiplier]);
+
+    // 🎵 MUSIC TRACK PROGRESS & LYRICS TICKER
+    useEffect(() => {
+      let musicInterval = null;
+      if (isPlaying) {
+        musicInterval = setInterval(() => {
+          setTrackProgress(prev => {
+            if (prev >= currentTrack.duration) {
+              return 0;
+            }
+            return prev + 1;
+          });
+        }, 1000);
+      } else {
+        clearInterval(musicInterval);
+      }
+      return () => clearInterval(musicInterval);
+    }, [isPlaying, currentTrack]);
+
+    // Timer select handler
+    const handleSelectPomoTime = (minutes) => {
+      setSelectedPomoTime(minutes);
+      setSecondsLeft(minutes * 60);
+      setIsRunning(false);
+    };
+
+    // Format time helpers
+    const formatTime = (totalSec) => {
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    };
+
+    // Shop purchase logic
+    const handleBuyItem = (item) => {
+      if (inventory.includes(item.id)) {
+        // Toggle Equip
+        setEquipped(prev => ({
+          ...prev,
+          [item.category]: prev[item.category] === item.id ? null : item.id
+        }));
+      } else {
+        if (coins >= item.price) {
+          setCoins(c => c - item.price);
+          setInventory(inv => [...inv, item.id]);
+          setEquipped(prev => ({ ...prev, [item.category]: item.id }));
+        } else {
+          alert("🪙 Yetersiz Coin! Biraz daha odaklanarak coin kazanabilirsin.");
+        }
+      }
+    };
+
+    // Filtered songs
+    const filteredSongs = useMemo(() => {
+      return MOCK_SONGS.filter(s =>
+        s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.artist.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }, [searchQuery]);
+
+    return (
+      <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
+
+        {/* HEADER / TOP BAR */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: '#fffaf4', padding: '16px 24px', borderRadius: '20px',
+          boxShadow: '0 10px 25px rgba(90,56,31,.08)', marginBottom: '20px'
+        }}>
+          <div>
+            <h1 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '24px', color: '#5b3a27' }}>🏡 Ders Odası</h1>
+            <span style={{ fontSize: '13px', color: '#8c6d58' }}>Odaklan, Kazan, Müziğini Dinle</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{
+              background: '#fef3d6', border: '1px solid #f3d89c', padding: '8px 16px',
+              borderRadius: '999px', fontWeight: '800', color: '#8c5e14', display: 'flex', alignItems: 'center', gap: '6px'
+            }}>
+              <span>🪙</span>
+              <span>{coins} Coin</span>
+              <span style={{ fontSize: '11px', opacity: 0.8 }}>(~2 dk = 1 Coin)</span>
+            </div>
+
+            {boosterMultiplier > 1 && (
+              <div style={{ background: '#e9d5ff', color: '#6b21a8', padding: '6px 12px', borderRadius: '999px', fontWeight: 'bold', fontSize: '12px' }}>
+                🚀 {boosterMultiplier}x Booster Aktif
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* NAVIGATION BAR */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          {[
+            { id: 'study', label: '🪑 Ders Odası', icon: '' },
+            { id: 'timer', label: '⏱️ Zamanlayıcı', icon: '' },
+            { id: 'shop', label: '👕 Mağaza', icon: '' },
+            { id: 'music', label: '🎵 Müzik & Spotify', icon: '' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="dm-btn"
+              style={{
+                flex: 1, padding: '12px', borderRadius: '16px', fontWeight: '700', fontSize: '15px',
+                background: activeTab === tab.id ? '#7c4c2a' : '#fffaf4',
+                color: activeTab === tab.id ? '#ffffff' : '#5c3a25',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* MAIN CONTENT AREA */}
+
+        {/* 1. DERS ODASI (STUDY ROOM) */}
+        {activeTab === 'study' && (
+          <div className="study-room-shell">
+            <div className="study-lamp"></div>
+            <div className="room-window"></div>
+
+            {/* QUICK FOCUS MUSIC CONTROLLER WIDGET ON STUDY ROOM */}
+            <div style={{
+              position: 'absolute', top: '16px', right: '16px', zIndex: 10,
+              background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)',
+              padding: '10px 16px', borderRadius: '18px', display: 'flex', alignItems: 'center', gap: '12px',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.12)'
+            }}>
+              <img src={currentTrack.cover} style={{ width: '38px', height: '38px', borderRadius: '8px', objectFit: 'cover' }} alt="Album" />
+              <div>
+                <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>{currentTrack.title}</div>
+                <div style={{ fontSize: '11px', color: '#666' }}>{currentTrack.artist}</div>
+              </div>
+              <button
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="dm-btn"
+                style={{ background: '#1db954', color: '#fff', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                {isPlaying ? '⏸' : '▶'}
+              </button>
+            </div>
+
+            {/* STUDY TABLE & SEAT */}
+            <div className="study-table">
+              <div className="table-center">
+                <div style={{ fontSize: '12px', color: '#8a644b' }}>{timerMode === 'pomodoro' ? 'Pomodoro' : 'Kronometre'}</div>
+                <div style={{ fontSize: '22px', fontWeight: '800' }}>
+                  {timerMode === 'pomodoro' ? formatTime(secondsLeft) : formatTime(stopwatchSeconds)}
+                </div>
+                <button
+                  onClick={() => setIsRunning(!isRunning)}
+                  className="dm-btn"
+                  style={{
+                    marginTop: '4px', background: isRunning ? '#e53e3e' : '#38a169', color: 'white',
+                    borderRadius: '8px', padding: '4px 10px', fontSize: '11px', fontWeight: 'bold'
+                  }}
+                >
+                  {isRunning ? 'Durdur' : 'Başlat'}
+                </button>
+              </div>
+            </div>
+
+            {/* AVATAR WITH EQUIPPED ITEMS DISPLAY */}
+            <div style={{ position: 'absolute', left: '50%', bottom: '22%', transform: 'translateX(-50%)', zIndex: 8, textAlign: 'center' }}>
+              <div style={{ fontSize: '64px', position: 'relative' }}>
+                🧑‍💻
+                {/* Visual indicators for equipped items */}
+                {equipped['kedi_kulakları'] && <span style={{ position: 'absolute', top: '-20px', left: '20px', fontSize: '24px' }}>🐱</span>}
+                {equipped['kalp'] === 'heart_glasses' && <span style={{ position: 'absolute', top: '10px', left: '22px', fontSize: '20px' }}>🕶️</span>}
+                {equipped['kulaklık'] && <span style={{ position: 'absolute', top: '2px', left: '16px', fontSize: '28px' }}>🎧</span>}
+                {equipped['bere'] && <span style={{ position: 'absolute', top: '-18px', left: '18px', fontSize: '26px' }}>🧶</span>}
+                {equipped['atkı'] && <span style={{ position: 'absolute', bottom: '-5px', left: '18px', fontSize: '24px' }}>🧣</span>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 2. ZAMANLAYICI (POMODORO & KRONOMETRE) */}
+        {activeTab === 'timer' && (
+          <div style={{ background: '#fffaf4', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
+              <button
+                className={`mode-switch-btn ${timerMode === 'pomodoro' ? 'active' : ''}`}
+                onClick={() => { setTimerMode('pomodoro'); setIsRunning(false); }}
+              >
+                ⏱️ Pomodoro (Geri Sayım)
+              </button>
+              <button
+                className={`mode-switch-btn ${timerMode === 'stopwatch' ? 'active' : ''}`}
+                onClick={() => { setTimerMode('stopwatch'); setIsRunning(false); }}
+              >
+                ⏳ Kronometre (İleri Sayım)
+              </button>
+            </div>
+
+            {timerMode === 'pomodoro' && (
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px', color: '#62432d' }}>
+                  ⏱️ Pomodoro Süresi Seç (Dakika):
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+                  {[15, 25, 35, 45, 60, 90, 120].map(mins => (
+                    <button
+                      key={mins}
+                      onClick={() => handleSelectPomoTime(mins)}
+                      className={`pomodoro-choice ${selectedPomoTime === mins ? 'active' : ''}`}
+                    >
+                      {mins} dk
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ textAlign: 'center', margin: '30px 0' }}>
+              <div className="timer-display">
+                {timerMode === 'pomodoro' ? formatTime(secondsLeft) : formatTime(stopwatchSeconds)}
+              </div>
+              <div style={{ color: '#8c6d58', marginTop: '6px' }}>
+                {isRunning ? '🔥 Odaklanma Devam Ediyor...' : 'Hazır olduğunda başlat tıkla!'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
+              <button
+                onClick={() => setIsRunning(!isRunning)}
+                className="dm-btn"
+                style={{
+                  background: isRunning ? '#e53e3e' : '#6f4bc1', color: 'white',
+                  padding: '14px 40px', borderRadius: '16px', fontWeight: '800', fontSize: '18px'
+                }}
+              >
+                {isRunning ? 'Durdur' : 'Odaklanmayı Başlat'}
+              </button>
+              <button
+                onClick={() => {
+                  setIsRunning(false);
+                  setSecondsLeft(selectedPomoTime * 60);
+                  setStopwatchSeconds(0);
+                }}
+                className="dm-btn"
+                style={{ background: '#e2e8f0', color: '#4a5568', padding: '14px 24px', borderRadius: '16px', fontWeight: 'bold' }}
+              >
+                Sıfırla
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 3. MAĞAZA (SHOP) */}
+        {activeTab === 'shop' && (
+          <div style={{ background: '#fffaf4', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+            <h2 style={{ fontFamily: 'Fraunces, serif', marginTop: 0, color: '#5b3a27' }}>👕 Odaklanma Mağazası</h2>
+            <p style={{ color: '#8c6d58', marginBottom: '20px' }}>Kazandığın coinlerle karakterini dilediğin gibi özelleştir!</p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
+              {SHOP_CATALOG.map(item => {
+                const isOwned = inventory.includes(item.id);
+                const isEquipped = equipped[item.category] === item.id;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="shop-item-card"
+                    style={{
+                      background: '#fff', border: isEquipped ? '2px solid #8d63d8' : '1px solid #eadbc9',
+                      borderRadius: '16px', padding: '16px', textAlign: 'center', position: 'relative'
+                    }}
+                  >
+                    <div style={{ fontSize: '36px', marginBottom: '8px' }}>{item.icon}</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#4a3324' }}>{item.name}</div>
+                    <div style={{ fontSize: '11px', color: '#9c7b66', textTransform: 'uppercase', margin: '4px 0' }}>{item.category.replace('_', ' ')}</div>
+                    
+                    <div style={{ margin: '10px 0', fontWeight: '800', color: '#8c5e14' }}>
+                      {isOwned ? 'Sahipsin' : `🪙 ${item.price} Coin`}
+                    </div>
+
+                    <button
+                      onClick={() => handleBuyItem(item)}
+                      className="dm-btn"
+                      style={{
+                        width: '100%', padding: '8px', borderRadius: '10px', fontWeight: 'bold', fontSize: '12px',
+                        background: isEquipped ? '#8d63d8' : isOwned ? '#4a5568' : '#7c4c2a',
+                        color: '#fff'
+                      }}
+                    >
+                      {isEquipped ? 'Çıkar' : isOwned ? 'Giy' : 'Satın Al'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 4. MÜZİK & SPOTIFY (MUSIC SECTION) */}
+        {activeTab === 'music' && (
+          <div className={musicTheme} style={{ borderRadius: '24px', padding: '30px', transition: 'all 0.3s ease', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            
+            {/* TOP SPOTIFY & THEME HEADER */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', marginBottom: '24px' }}>
+              <div>
+                <h2 style={{ fontFamily: 'Fraunces, serif', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#1db954' }}> Spotify</span> Müzik Ekranı
+                </h2>
+                <span style={{ fontSize: '12px', opacity: 0.8 }}>Odaklanırken ritmi yakala</span>
+              </div>
+
+              {/* Theme Switcher & Spotify Account */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <select
+                  value={musicTheme}
+                  onChange={(e) => setMusicTheme(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '12px', border: 'none', background: 'rgba(255,255,255,0.2)', color: 'inherit', fontWeight: 'bold' }}
+                >
+                  <option value="music-theme-cozy-wood" style={{ color: '#000' }}>🪵 Ahşap Teması</option>
+                  <option value="music-theme-spotify-dark" style={{ color: '#000' }}>🖤 Spotify Koyu Tema</option>
+                  <option value="music-theme-lofi-sunset" style={{ color: '#000' }}>🌆 Lo-Fi Sunset</option>
+                  <option value="music-theme-cyber-neon" style={{ color: '#000' }}>⚡ Cyberpunk Neon</option>
+                </select>
+
+                <button
+                  onClick={() => setSpotifyConnected(!spotifyConnected)}
+                  className="dm-btn"
+                  style={{
+                    background: spotifyConnected ? '#1db954' : '#333', color: '#fff',
+                    padding: '8px 16px', borderRadius: '999px', fontWeight: 'bold', fontSize: '12px'
+                  }}
+                >
+                  {spotifyConnected ? '🟢 Spotify Bağlandı' : 'Spotify Hesabını Bağla'}
+                </button>
+              </div>
+            </div>
+
+            {/* SEARCH BAR */}
+            <div style={{ marginBottom: '20px' }}>
+              <input
+                type="text"
+                placeholder="🔍 Spotify'da Şarkı veya Sanatçı Ara..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%', padding: '12px 18px', borderRadius: '14px', border: 'none',
+                  background: 'rgba(255,255,255,0.15)', color: 'inherit', outline: 'none', fontSize: '14px'
+                }}
+              />
+            </div>
+
+            {/* PLAYER & LYRICS GRID */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              
+              {/* CURRENT PLAYER */}
+              <div style={{ background: 'rgba(0,0,0,0.1)', padding: '20px', borderRadius: '18px', textAlign: 'center' }}>
+                <img src={currentTrack.cover} style={{ width: '140px', height: '140px', borderRadius: '16px', objectFit: 'cover', marginBottom: '12px' }} alt="Cover" />
+                <div style={{ fontWeight: 'bold', fontSize: '18px' }}>{currentTrack.title}</div>
+                <div style={{ fontSize: '13px', opacity: 0.8, marginBottom: '15px' }}>{currentTrack.artist} • {currentTrack.album}</div>
+
+                {/* Progress bar */}
+                <div style={{ background: 'rgba(255,255,255,0.2)', height: '6px', borderRadius: '3px', overflow: 'hidden', marginBottom: '15px' }}>
+                  <div style={{ background: '#1db954', height: '100%', width: `${(trackProgress / currentTrack.duration) * 100}%`, transition: 'width 0.3s linear' }}></div>
+                </div>
+
+                {/* Play/Pause Button */}
+                <button
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="dm-btn"
+                  style={{
+                    background: '#1db954', color: '#fff', padding: '12px 30px', borderRadius: '999px',
+                    fontWeight: '800', fontSize: '16px', cursor: 'pointer'
+                  }}
+                >
+                  {isPlaying ? '⏸ Durdur' : '▶ Şarkıyı Başlat'}
+                </button>
+              </div>
+
+              {/* REAL-TIME LYRICS DISPLAY */}
+              <div style={{ background: 'rgba(0,0,0,0.1)', padding: '20px', borderRadius: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <h4 style={{ margin: '0 0 10px 0', textAlign: 'center' }}>🎤 Eş Zamanlı Şarkı Sözleri</h4>
+                <div className="lyrics-box">
+                  {currentTrack.lyrics.map((line, idx) => {
+                    const isActive = trackProgress >= line.time && (idx === currentTrack.lyrics.length - 1 || trackProgress < currentTrack.lyrics[idx + 1].time);
+                    return (
+                      <div key={idx} className={`lyric-line ${isActive ? 'active' : ''}`}>
+                        {line.text}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+            {/* SONG LIST / SEARCH RESULTS */}
+            <div style={{ marginTop: '24px' }}>
+              <h4 style={{ margin: '0 0 12px 0' }}>🎵 Önerilen Odaklanma Şarkıları</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {filteredSongs.map(song => (
+                  <div
+                    key={song.id}
+                    onClick={() => {
+                      setCurrentTrack(song);
+                      setTrackProgress(0);
+                      setIsPlaying(true);
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px',
+                      borderRadius: '12px', background: currentTrack.id === song.id ? 'rgba(29, 185, 84, 0.2)' : 'rgba(255,255,255,0.05)',
+                      cursor: 'pointer', transition: '0.2s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <img src={song.cover} style={{ width: '36px', height: '36px', borderRadius: '6px' }} alt="cover" />
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{song.title}</div>
+                        <div style={{ fontSize: '11px', opacity: 0.7 }}>{song.artist}</div>
+                      </div>
+                    </div>
+                    <button className="dm-btn" style={{ background: '#1db954', color: '#fff', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>
+                      {currentTrack.id === song.id && isPlaying ? 'Çalıyor...' : 'Çal'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+      </div>
+    );
+  }
+
+  ReactDOM.render(<App />, document.getElementById('root'));
+})();
+</script>
+</body>
+</html>
