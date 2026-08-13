@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ders Odası & Müzik Odaklanma</title>
+
+<!-- Fonts & Frameworks -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Nunito+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Nunito Sans', sans-serif; background: #f6f0e6; color: #4a3324; }
+  
+  /* Ders Odası Teması */
+  .study-room-shell {
+    position: relative; min-height: 520px; overflow: hidden; border-radius: 28px;
+    background:
+      radial-gradient(circle at 18% 16%, rgba(255,255,255,.95) 0 2px, transparent 3px),
+      radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255,244,222,.55), transparent 65%),
+      linear-gradient(180deg, #f8e8d6 0%, #ead2bc 52%, #d8b28f 53%, #bd8c61 100%);
+    box-shadow: inset 0 0 90px rgba(93,52,24,.12), 0 24px 60px rgba(86,55,31,.16);
+  }
+  .study-table {
+    position:absolute; left:8%; right:8%; top:38%; height:230px; border-radius:42% 42% 26px 26px;
+    background: linear-gradient(180deg,#a06e46,#7c4c2a 55%,#663a20 85%, #562f19 100%);
+    border: 7px solid #5b331f;
+    box-shadow: 0 30px 26px -12px rgba(40,20,8,.38), inset 0 10px 18px rgba(255,255,255,.12);
+  }
+
+  /* Müzik Sekmesi Teması */
+  .music-room-shell {
+    position: relative; min-height: 580px; overflow: hidden; border-radius: 28px;
+    background: linear-gradient(135deg, #181028 0%, #0d0818 50%, #211238 100%);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 80px rgba(138, 43, 226, 0.15);
+    color: #e2d9f3;
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: rgba(141,99,216,0.4); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(141,99,216,0.7); }
+
+  .timer-font { font-family: 'Fraunces', serif; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// MOCK SPOTIFY VERİLERİ (Şarkılar ve Eş Zamanlı Sözler)
+const SPOTIFY_TRACKS = [
+  {
+    id: "1",
+    title: "Lofi Study Beats & Rain",
+    artist: "Lofi Girl",
+    album: "Chillhop Essentials",
+    cover: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=300",
+    duration: 180,
+    lyrics: [
+      { time: 0, text: "🎵 (Yağmur ve tatlı bir piyano melodisi başlıyor...)" },
+      { time: 10, text: "Derin bir nefes al, odağını topla..." },
+      { time: 25, text: "Aklındaki tüm düşünceleri serbest bırak." },
+      { time: 45, text: "Sadece bu ana ve hedefine odaklan." },
+      { time: 70, text: "Her geçen dakika seni başarına yaklaştırıyor." },
+      { time: 105, text: "🎵 (Piyano ve bas geçişi)" },
+      { time: 135, text: "Harika gidiyorsun, çalışmaya devam et!" }
+    ]
+  },
+  {
+    id: "2",
+    title: "Midnight Coffee & Code",
+    artist: "Acoustic Dreams",
+    album: "Night Focus Vol. 2",
+    cover: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=300",
+    duration: 210,
+    lyrics: [
+      { time: 0, text: "🎵 (Akustik gitar ritmi başlıyor)" },
+      { time: 15, text: "Sessiz gecede sadece sen ve hedeflerin var." },
+      { time: 40, text: "Kahvenden bir yudum al ve ilerlemeye bak." },
+      { time: 80, text: "Başarı disiplinli adımlarla gelir." },
+      { time: 120, text: "🎵 (Melodik gitar solosu)" },
+      { time: 170, text: "Zaman akıyor, sen kazandıkça büyüyorsun." }
+    ]
+  },
+  {
+    id: "3",
+    title: "Synthwave Work Zone",
+    artist: "Neon Future",
+    album: "Cyber Study",
+    cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+    duration: 195,
+    lyrics: [
+      { time: 0, text: "🎵 (Enerjik synthvave melodileri)" },
+      { time: 20, text: "Yüksek odaklanma moduna geçiliyor..." },
+      { time: 50, text: "Hızlan, ritmi hisset ve işe koyul." },
+      { time: 90, text: "Odaklanma seviyesi: %100" },
+      { time: 140, text: "Son düzlüktesin, tempoyu düşürme!" }
+    ]
+  }
+];
+
+// MAĞAZA ÜRÜNLERİ KATALOĞU (Yeni Eklenen Kategorilerle)
+const SHOP_ITEMS = [
+  // Saçlar
+  { id: 'hair_1', category: 'Saçlar', name: 'Dalgalı Saç', price: 60, icon: '💇‍♀️' },
+  { id: 'hair_2', category: 'Saçlar', name: 'Anime Düz Saç', price: 90, icon: '💇' },
+  { id: 'hair_3', category: 'Saçlar', name: 'Kıvırcık Bob', price: 80, icon: '👩‍🦱' },
+  // Kedi Kulakları
+  { id: 'cat_ears_1', category: 'Kedi Kulakları', name: 'Pembe Kedi Kulakları', price: 100, icon: '🐱' },
+  { id: 'cat_ears_2', category: 'Kedi Kulakları', name: 'RGB Gamer Kedi Kulakları', price: 160, icon: '🎧' },
+  // Kalp Aksesuarı
+  { id: 'heart_acc_1', category: 'Kalp Aksesuarı', name: 'Uçan Kalp Halesi', price: 85, icon: '💖' },
+  { id: 'heart_acc_2', category: 'Kalp Aksesuarı', name: 'Kalp Gözlük', price: 110, icon: '🕶️' },
+  // Bereler
+  { id: 'beanie_1', category: 'Bereler', name: 'Örgü Kış Beresi', price: 50, icon: '🧶' },
+  { id: 'beanie_2', category: 'Bereler', name: 'Pastel Hipster Bere', price: 75, icon: '🧢' },
+  // Kulaklıklar
+  { id: 'headphones_1', category: 'Kulaklıklar', name: 'Retro Stüdyo Kulaklığı', price: 120, icon: '🎧' },
+  { id: 'headphones_2', category: 'Kulaklıklar', name: 'Kablosuz Pro Kulaklık', price: 180, icon: '📻' },
+  // Tokalar
+  { id: 'clips_1', category: 'Tokalar', name: 'Yıldız Toka Seti', price: 40, icon: '⭐' },
+  { id: 'clips_2', category: 'Tokalar', name: 'Çiçekli Klips', price: 45, icon: '🌸' },
+  // Atkı
+  { id: 'scarf_1', category: 'Atkı', name: 'Gryffindor Desenli Atkı', price: 95, icon: '🧣' },
+  { id: 'scarf_2', category: 'Atkı', name: 'Pofuduk Peluş Atkı', price: 110, icon: '❄️' },
+  // Premium Üstler
+  { id: 'top_1', category: 'Premium Üstler', name: 'Kraliyet Kadife Ceketi', price: 250, icon: '👑' },
+  { id: 'top_2', category: 'Premium Üstler', name: 'Cyberpunk Neon Sweat', price: 300, icon: '🧥' },
+  // Premium Altlar
+  { id: 'bottom_1', category: 'Premium Altlar', name: 'Altın İşlemeli Pantolon', price: 200, icon: '👖' },
+  { id: 'bottom_2', category: 'Premium Altlar', name: 'Tasarım Pileli Etek', price: 220, icon: '👗' }
+];
+
+function App() {
+  // --- STATE DÜZENİ ---
+  const [activeTab, setActiveTab] = useState('room'); // room | music | shop
+  
+  // Coin & Booster
+  const [coins, setCoins] = useState(120);
+  const [activeBooster, setActiveBooster] = useState({ name: "Standart (1x)", multiplier: 1 });
+  const [lastRewardMsg, setLastRewardMsg] = useState("");
+
+  // Odaklanma & Sayaç State'leri
+  const [timerMode, setTimerMode] = useState('pomodoro'); // pomodoro | stopwatch
+  const [selectedPomoMin, setSelectedPomoMin] = useState(25); // 15, 25, 35, 45, 60, 90, 120
+  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  const [stopwatchTime, setStopwatchTime] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [accumulatedSeconds, setAccumulatedSeconds] = useState(0); // Dakika başı coin takibi için
+
+  // Envanter & Giydirme
+  const [inventory, setInventory] = useState([]);
+  const [equipped, setEquipped] = useState({});
+
+  // Spotify & Müzik State'leri
+  const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentTrack, setCurrentTrack] = useState(SPOTIFY_TRACKS[0]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [trackProgress, setTrackProgress] = useState(0);
+
+  // --- SAYAÇ & COIN MANTIĞI ---
+  useEffect(() => {
+    let interval = null;
+    if (isRunning) {
+      interval = setInterval(() => {
+        // Pomodoro Modu
+        if (timerMode === 'pomodoro') {
+          setTimeLeft(prev => {
+            if (prev <= 1) {
+              completeSession(selectedPomoMin);
+              setIsRunning(false);
+              return selectedPomoMin * 60;
+            }
+            return prev - 1;
+          });
+        } else {
+          // Kronometre Modu
+          setStopwatchTime(prev => prev + 1);
+        }
+
+        // Dakika içi süre takibi: Her 2 dakikada (120 sn) 1 coin
+        setAccumulatedSeconds(prev => {
+          if (prev + 1 >= 120) {
+            const earned = 1 * activeBooster.multiplier;
+            setCoins(c => c + earned);
+            showRewardToast(`⏱️ 2 dk tamamlandı: +${earned} Coin!`);
+            return 0;
+          }
+          return prev + 1;
+        });
+
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRunning, timerMode, selectedPomoMin, activeBooster]);
+
+  // Pomodoro Süre Değişimi
+  const handlePomoChange = (mins) => {
+    setSelectedPomoMin(mins);
+    setTimeLeft(mins * 60);
+    setIsRunning(false);
+  };
+
+  // Seans Tamamlama ve Ekstra Bonus Coin Hesaplama
+  const completeSession = (mins) => {
+    // 30, 45, 60, 90 ve 120 dakikalık çalışmalara ekstra bonus coin
+    let bonus = 0;
+    if (mins >= 120) bonus = 70;
+    else if (mins >= 90) bonus = 45;
+    else if (mins >= 60) bonus = 25;
+    else if (mins >= 45) bonus = 15;
+    else if (mins >= 30) bonus = 8;
+    else if (mins >= 25) bonus = 5;
+    else if (mins >= 15) bonus = 2;
+
+    const totalEarned = Math.round(bonus * activeBooster.multiplier);
+    setCoins(c => c + totalEarned);
+    showRewardToast(`🎉 Harika! ${mins} dk Odaklanma Bonusu: +${totalEarned} Coin (Çarpan: ${activeBooster.multiplier}x)`);
+  };
+
+  const showRewardToast = (msg) => {
+    setLastRewardMsg(msg);
+    setTimeout(() => setLastRewardMsg(""), 4500);
+  };
+
+  // --- MÜZİK ÇALMA MANTIĞI ---
+  useEffect(() => {
+    let musicInterval = null;
+    if (isPlaying) {
+      musicInterval = setInterval(() => {
+        setTrackProgress(prev => (prev + 1) % currentTrack.duration);
+      }, 1000);
+    }
+    return () => clearInterval(musicInterval);
+  }, [isPlaying, currentTrack]);
+
+  // Zaman Formatlayıcı Helper
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // Şarkı Sözü Eşleşmesi
+  const getCurrentLyric = () => {
+    if (!currentTrack.lyrics) return "";
+    let currentLine = currentTrack.lyrics[0]?.text || "";
+    for (let l of currentTrack.lyrics) {
+      if (trackProgress >= l.time) {
+        currentLine = l.text;
+      }
+    }
+    return currentLine;
+  };
+
+  // Mağazadan Satın Alma
+  const buyItem = (item) => {
+    if (coins < item.price) {
+      alert("Yeterli coin'iniz bulunmuyor!");
+      return;
+    }
+    setCoins(c => c - item.price);
+    setInventory(inv => [...inv, item.id]);
+    setEquipped(eq => ({ ...eq, [item.category]: item }));
+  };
+
+  // Filtrelenmiş Şarkılar
+  const filteredTracks = SPOTIFY_TRACKS.filter(t => 
+    t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    t.artist.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="max-w-6xl mx-auto p-4 md:p-6">
+      
+      {/* NAVEGASYON VE ÜST BİLGİ BARI */}
+      <header className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-white/80 backdrop-blur border border-amber-200/60 p-4 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-xl shadow-md">
+            📚
+          </div>
+          <div>
+            <h1 className="font-bold text-lg leading-tight text-amber-950">Ders Odası & Müzik Studio</h1>
+            <p className="text-xs text-amber-700">Odaklan, Müzik Dinle, Coin Kazan!</p>
+          </div>
+        </div>
+
+        {/* Tab Butonları */}
+        <div className="flex items-center gap-2 bg-amber-100/60 p-1.5 rounded-xl border border-amber-200">
+          <button 
+            onClick={() => setActiveTab('room')}
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition ${activeTab === 'room' ? 'bg-white text-amber-900 shadow-sm' : 'text-amber-800 hover:bg-white/50'}`}>
+            🏠 Çalışma Odası
+          </button>
+          <button 
+            onClick={() => setActiveTab('music')}
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition flex items-center gap-2 ${activeTab === 'music' ? 'bg-purple-900 text-white shadow-sm' : 'text-amber-800 hover:bg-white/50'}`}>
+            🎵 Spotify Müzik
+          </button>
+          <button 
+            onClick={() => setActiveTab('shop')}
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition ${activeTab === 'shop' ? 'bg-white text-amber-900 shadow-sm' : 'text-amber-800 hover:bg-white/50'}`}>
+            👕 Mağaza
+          </button>
+        </div>
+
+        {/* Bakiye & Booster Göstergesi */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-amber-100 px-3.5 py-1.5 rounded-full border border-amber-300 font-bold text-amber-900 text-sm">
+            <span>🪙</span>
+            <span>{coins} Coin</span>
+          </div>
+          <button 
+            onClick={() => {
+              const nextM = activeBooster.multiplier === 1 ? 2 : activeBooster.multiplier === 2 ? 3 : 1;
+              setActiveBooster({ name: `${nextM}x Booster`, multiplier: nextM });
+            }}
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold px-3 py-2 rounded-full shadow hover:opacity-90 transition flex items-center gap-1">
+            ⚡ {activeBooster.multiplier}x Çarpan
+          </button>
+        </div>
+      </header>
+
+      {/* REWARD TOAST BİLDİRİMİ */}
+      {lastRewardMsg && (
+        <div className="mb-4 p-3 bg-emerald-500 text-white font-bold rounded-xl shadow-lg animate-bounce text-center text-sm flex items-center justify-center gap-2">
+          <span>🎁</span> {lastRewardMsg}
+        </div>
+      )}
+
+      {/* ==================== 1. ÇALIŞMA ODASI SEKMESİ ==================== */}
+      {activeTab === 'room' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Sol / Üst: Görsel Odamız */}
+          <div className="lg:col-span-2 study-room-shell p-6 flex flex-col justify-between">
+            <div className="flex justify-between items-start z-10">
+              <div className="bg-white/80 backdrop-blur px-3 py-1.5 rounded-xl border border-amber-200 text-xs font-semibold text-amber-900 shadow-sm">
+                🪟 Odaklanma Odası #1
+              </div>
+              {/* Giydirilmiş Eşyalar Etiketleri */}
+              <div className="flex flex-wrap gap-1 max-w-xs justify-end">
+                {Object.values(equipped).map((item, idx) => (
+                  <span key={idx} className="bg-amber-900/80 text-amber-100 text-[10px] px-2 py-0.5 rounded-full backdrop-blur">
+                    {item.icon} {item.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Masa & Sandalye Simülasyonu */}
+            <div className="study-table flex items-center justify-center relative">
+              <div className="bg-amber-50/90 backdrop-blur px-6 py-4 rounded-2xl shadow-xl border border-amber-200 text-center">
+                <span className="text-xs uppercase font-bold tracking-wider text-amber-700 block mb-1">
+                  {timerMode === 'pomodoro' ? 'Pomodoro Odağı' : 'Kronometre'}
+                </span>
+                <div className="text-4xl font-extrabold text-amber-950 timer-font">
+                  {timerMode === 'pomodoro' ? formatTime(timeLeft) : formatTime(stopwatchTime)}
+                </div>
+              </div>
+            </div>
+
+            {/* Alt Müzik Mini-Player Barı (Odak Ekranında Müzik Kontrolü) */}
+            <div className="z-10 bg-black/60 backdrop-blur-md border border-white/20 p-3 rounded-2xl flex items-center justify-between text-white shadow-xl">
+              <div className="flex items-center gap-3">
+                <img src={currentTrack.cover} className="w-12 h-12 rounded-lg object-cover border border-white/20" />
+                <div>
+                  <div className="font-bold text-sm text-purple-200">{currentTrack.title}</div>
+                  <div className="text-xs text-gray-300">{currentTrack.artist}</div>
+                </div>
+              </div>
+
+              {/* Canlı Şarkı Sözü Gösterimi */}
+              <div className="hidden md:block italic text-xs text-purple-200/90 bg-white/10 px-3 py-1.5 rounded-lg max-w-xs truncate">
+                "{getCurrentLyric()}"
+              </div>
+
+              {/* Çalma Kontrolleri */}
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="w-10 h-10 rounded-full bg-purple-600 hover:bg-purple-500 flex items-center justify-center text-white shadow transition">
+                  <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Sağ / Kontrol Paneli */}
+          <div className="bg-white/80 border border-amber-200 p-6 rounded-3xl shadow-sm flex flex-col justify-between">
+            <div>
+              {/* Mod Seçimi: Pomodoro vs Kronometre */}
+              <div className="flex bg-amber-100 p-1 rounded-xl mb-6 border border-amber-200">
+                <button 
+                  onClick={() => { setTimerMode('pomodoro'); setIsRunning(false); }}
+                  className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${timerMode === 'pomodoro' ? 'bg-amber-800 text-white shadow' : 'text-amber-900'}`}>
+                  ⏱️ Pomodoro
+                </button>
+                <button 
+                  onClick={() => { setTimerMode('stopwatch'); setIsRunning(false); }}
+                  className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${timerMode === 'stopwatch' ? 'bg-amber-800 text-white shadow' : 'text-amber-900'}`}>
+                  ⏲️ Kronometre
+                </button>
+              </div>
+
+              {/* Pomodoro Dakika Seçenekleri (Genişletilmiş) */}
+              {timerMode === 'pomodoro' && (
+                <div className="mb-6">
+                  <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider mb-2">
+                    Süre Seçimi (Dakika)
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[15, 25, 35, 45, 60, 90, 120].map(mins => (
+                      <button
+                        key={mins}
+                        onClick={() => handlePomoChange(mins)}
+                        className={`py-2 rounded-xl text-xs font-bold border transition ${selectedPomoMin === mins ? 'bg-purple-700 text-white border-purple-800 shadow' : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'}`}>
+                        {mins} dk
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-amber-700 mt-2 italic">
+                    💡 30+ dakikalık seanslar ekstra bonus Coin kazandırır!
+                  </p>
+                </div>
+              )}
+
+              {/* Çalışma/Başlat Butonları */}
+              <div className="space-y-2 mb-6">
+                <button 
+                  onClick={() => setIsRunning(!isRunning)}
+                  className={`w-full py-3.5 rounded-2xl font-extrabold text-white text-base shadow-lg transition ${isRunning ? 'bg-rose-600 hover:bg-rose-500' : 'bg-emerald-600 hover:bg-emerald-500'}`}>
+                  {isRunning ? '⏸️ Duraklat' : '▶️ Çalışmayı Başlat'}
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsRunning(false);
+                    if (timerMode === 'pomodoro') setTimeLeft(selectedPomoMin * 60);
+                    else setStopwatchTime(0);
+                  }}
+                  className="w-full py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs rounded-xl transition">
+                  🔄 Sıfırla
+                </button>
+              </div>
+            </div>
+
+            {/* Coin Bilgi Özeti */}
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl">
+              <div className="font-bold text-xs text-amber-900 mb-1 flex items-center justify-between">
+                <span>🪙 Coin Kazanım Mantığı</span>
+                <span className="text-amber-700">2 dk = 1 Coin</span>
+              </div>
+              <ul className="text-[11px] text-amber-800 space-y-1">
+                <li>• Her 2 dakikada bir otomatik coin aktarılır.</li>
+                <li>• Tamamlanan seanslarda ekstra büyük bonuslar eklenir.</li>
+                <li>• Booster çarpanı tüm kazancı katlar.</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ==================== 2. SPOTIFY MÜZİK SEKMESİ ==================== */}
+      {activeTab === 'music' && (
+        <div className="music-room-shell p-6 md:p-8 flex flex-col justify-between">
+          
+          {/* Üst Bar & Spotify Hesap Bağlantısı */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-black text-2xl font-bold shadow-lg shadow-emerald-500/20">
+                <i className="fab fa-spotify"></i>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Spotify Odaklanma Odası</h2>
+                <p className="text-xs text-purple-300">En sevdiğin parçalarla ders çalışma moduna geç</p>
+              </div>
+            </div>
+
+            {/* Spotify Connect Butonu */}
+            {!isSpotifyConnected ? (
+              <button 
+                onClick={() => setIsSpotifyConnected(true)}
+                className="bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold px-5 py-2.5 rounded-full text-sm shadow-lg shadow-emerald-500/20 transition flex items-center gap-2">
+                <i className="fab fa-spotify text-lg"></i> Spotify Hesabını Bağla
+              </button>
+            ) : (
+              <div className="flex items-center gap-3 bg-emerald-950/60 border border-emerald-500/40 px-4 py-2 rounded-full">
+                <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
+                <span className="text-xs font-bold text-emerald-200">Spotify Bağlandı (@kullanici)</span>
+              </div>
+            )}
+          </div>
+
+          {/* Ana Müzik & Söz Alanı */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 my-6">
+            
+            {/* Sol: Şarkı Arama & Oynatma Listesi */}
+            <div className="glass-card p-5 rounded-3xl flex flex-col h-[380px]">
+              <div className="relative mb-4">
+                <input 
+                  type="text" 
+                  placeholder="Şarkı veya sanatçı ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div className="overflow-y-auto space-y-2 flex-1 pr-1">
+                {filteredTracks.map(track => (
+                  <div 
+                    key={track.id}
+                    onClick={() => { setCurrentTrack(track); setIsPlaying(true); setTrackProgress(0); }}
+                    className={`p-3 rounded-2xl transition cursor-pointer flex items-center justify-between ${currentTrack.id === track.id ? 'bg-purple-600/40 border border-purple-400/50' : 'hover:bg-white/5'}`}>
+                    <div className="flex items-center gap-3">
+                      <img src={track.cover} className="w-10 h-10 rounded-xl object-cover" />
+                      <div>
+                        <div className="text-xs font-bold text-white">{track.title}</div>
+                        <div className="text-[11px] text-purple-300">{track.artist}</div>
+                      </div>
+                    </div>
+                    {currentTrack.id === track.id && isPlaying && (
+                      <span className="text-xs text-emerald-400 font-bold animate-pulse">Çalıyor...</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Orta & Sağ: Albüm Kapağı, Oynatıcı & Canlı Şarkı Sözleri */}
+            <div className="lg:col-span-2 glass-card p-6 rounded-3xl flex flex-col justify-between">
+              
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <img src={currentTrack.cover} className="w-40 h-40 rounded-2xl shadow-2xl object-cover border border-white/20" />
+                
+                <div className="flex-1 text-center md:text-left">
+                  <span className="bg-purple-500/20 text-purple-300 text-[10px] font-bold px-3 py-1 rounded-full border border-purple-400/30">
+                    {currentTrack.album}
+                  </span>
+                  <h3 className="text-2xl font-extrabold text-white mt-2">{currentTrack.title}</h3>
+                  <p className="text-sm text-purple-300 font-medium mb-4">{currentTrack.artist}</p>
+
+                  {/* Eş Zamanlı Şarkı Sözleri Kutusu */}
+                  <div className="bg-black/40 border border-white/10 p-4 rounded-2xl text-center md:text-left">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400 block mb-1">
+                      🎤 Eş Zamanlı Şarkı Sözleri
+                    </span>
+                    <p className="text-sm font-semibold text-purple-100 italic">
+                      "{getCurrentLyric()}"
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Oynatıcı İlerleme Çubuğu & Kontroller */}
+              <div className="mt-6 space-y-3">
+                <div className="flex justify-between text-xs text-purple-300">
+                  <span>{formatTime(trackProgress)}</span>
+                  <span>{formatTime(currentTrack.duration)}</span>
+                </div>
+                <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-r from-purple-500 to-emerald-400 h-full transition-all duration-300"
+                    style={{ width: `${(trackProgress / currentTrack.duration) * 100}%` }}>
+                  </div>
+                </div>
+
+                {/* Alt Oynatma Butonları */}
+                <div className="flex items-center justify-center gap-6 pt-2">
+                  <button onClick={() => setTrackProgress(0)} className="text-purple-300 hover:text-white transition text-lg">
+                    <i className="fas fa-backward-step"></i>
+                  </button>
+                  <button 
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="w-14 h-14 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 hover:scale-105 transition flex items-center justify-center text-black text-xl shadow-lg shadow-emerald-500/30">
+                    <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+                  </button>
+                  <button onClick={() => setTrackProgress(0)} className="text-purple-300 hover:text-white transition text-lg">
+                    <i className="fas fa-forward-step"></i>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Müzik Sekmesi Alt Bilgi */}
+          <div className="text-center text-xs text-purple-300/60 pt-2 border-t border-white/5">
+            🎵 Şarkıyı başlattıktan sonra "Çalışma Odası" sekmesine geçerek odağını koruyabilirsin.
+          </div>
+        </div>
+      )}
+
+      {/* ==================== 3. MAĞAZA SEKMESİ ==================== */}
+      {activeTab === 'shop' && (
+        <div className="bg-white/80 border border-amber-200 p-6 rounded-3xl shadow-sm">
+          <div className="flex items-center justify-between mb-6 border-b border-amber-200 pb-4">
+            <div>
+              <h2 className="text-xl font-bold text-amber-950">Aksesuar & Kıyafet Mağazası</h2>
+              <p className="text-xs text-amber-700">Kazandığın coin'lerle karakterini özelleştir</p>
+            </div>
+            <div className="bg-amber-100 border border-amber-300 px-4 py-2 rounded-2xl font-bold text-amber-900 text-sm">
+              Mevcut Bakiyen: 🪙 {coins} Coin
+            </div>
+          </div>
+
+          {/* Ürün Kataloğu */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {SHOP_ITEMS.map(item => {
+              const isOwned = inventory.includes(item.id);
+              const isEquipped = equipped[item.category]?.id === item.id;
+
+              return (
+                <div key={item.id} className="bg-amber-50/60 border border-amber-200/80 p-4 rounded-2xl flex flex-col justify-between hover:shadow-md transition">
+                  <div className="text-center mb-3">
+                    <span className="text-xs font-bold text-purple-700 uppercase bg-purple-100 px-2.5 py-0.5 rounded-full inline-block mb-2">
+                      {item.category}
+                    </span>
+                    <div className="text-4xl my-2">{item.icon}</div>
+                    <div className="font-bold text-amber-950 text-sm">{item.name}</div>
+                  </div>
+
+                  <div>
+                    {!isOwned ? (
+                      <button 
+                        onClick={() => buyItem(item)}
+                        className="w-full py-2 bg-amber-800 hover:bg-amber-900 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1 shadow">
+                        <span>🪙 {item.price}</span>
+                        <span>Satın Al</span>
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => setEquipped(eq => ({ ...eq, [item.category]: item }))}
+                        className={`w-full py-2 font-bold text-xs rounded-xl transition ${isEquipped ? 'bg-emerald-600 text-white' : 'bg-amber-200 text-amber-900 hover:bg-amber-300'}`}>
+                        {isEquipped ? '✓ Kuşanıldı' : 'Kuşan'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
